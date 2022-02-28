@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script type="text/javascript" src="jquery.min.js"></script>
+    <script type="text/javascript" src="utilz.js"></script>
+    <script type="text/javascript" src="common.js"></script>
+
+    <script src="custom_pdf.worker.js" crossorigin="anonymous"></script>
+    <script src="custom_pdf.js" crossorigin="anonymous"></script>
+    <link href="custom_pdfjs_viewer.css" rel="stylesheet" type="text/css" />
+    <script src="fabric.min.js"></script>
+    <script type="text/javascript" src="pdfViewer.js?sdff"></script>
+    <script type="text/javascript" src="pdfViewer.fabric.js"></script>
+
+    <script src="https://unpkg.com/pdf-lib"></script>
+    <script src="https://unpkg.com/downloadjs@1.4.7"></script>
+    <script src="https://unpkg.com/@pdf-lib/fontkit/dist/fontkit.umd.js"></script>
+
+
+
+
+</head>
+
+<body>
+
+    <h1 id="save">CLick to Save</h1>
+    <div id="pdfLoadZoneOuter">
+        <div id="pdfLoadZone">
+            <div class="pageCanvasWrapper">
+
+
+            </div>
+        </div>
+    </div>
+
+</body>
+
+</html>
+
+<script type="text/javascript">
+    $('#save').click(function () {
+        //alert('Does this work?');
+        createFinalPdf();
+    });
+
+    window.pdf24 = window.pdf24 || {};
+    pdf24.langCode = 'en';
+
+    window.gulshanFontsList = [];
+
+
+    function onFileUploaded() {
+        //if(pdf24.fileUploaded) {
+        //	return;
+        //}
+
+        //var serverFiles = pdf24.getServerFilesForDefaultFileZone();
+        //if(serverFiles.length == 0) {
+        //	return;
+        //}
+
+        //pdf24.fileUploaded = true;
+
+        console.log("Starting to load file");
+        //var serverFile = serverFiles[0];
+        var fileUrl = "v3.2.pdf";///"test.pdf";//pdf24.workerServer.getFileUrl(serverFile);
+
+        pdf24.pdfFileViewer = pdf24.createPdfViewer({
+            fileUrl: fileUrl,
+            targetId: 'pdfLoadZone'
+        }, function (viewer) {
+            pdf24.pdfFileViewer = viewer;
+            pdf24.attachFabricToViewer(viewer);
+            viewer.fabric.bindTools($('#pdfViewerFabricTools [data-role]'));
+            viewer.fabric.stickyToolbarSelector = '#pdfViewerZoneToolbar';
+            viewer.bindTools('#pdfViewerTools [data-role]');
+            viewer.showPage(1);
+
+            $('#pdfViewerZone').show();
+            //$('#form').show();
+            //$("#fileZone").hide();
+
+            //utilz.makeFullWidth('#pdfViewerZone');
+        });
+    }
+
+    // function pushSvgFiles(svgs, callback) {
+    // 	fileInfos = [];
+    // 	for(var page in svgs) {
+    // 		if(svgs.hasOwnProperty(page)) {
+    // 			fileInfos.push({
+    // 				page: parseInt(page),
+    // 				content: svgs[page],
+    // 				extension: 'svg'
+    // 			});
+    // 		}
+    // 	}
+    // 	pdf24.workerServer.doPostJson('contentToFile', {
+    // 		fileInfos : fileInfos
+    // 	}, function(result) {
+    // 		for(var i=0; i<result.length; i++) {
+    // 			fileInfos[i].serverFile = result[i];
+    // 		}
+    // 		callback(fileInfos);
+    // 	}, function(xhr) {
+    // 		alert('Error creating overlay information files');
+    // 		$('#preparingZone').hide();
+    // 		$('#form').show();
+    // 	});
+    // }
+
+
+
+    async function modifyPdf(dataObj) {
+        //const pdfDoc = await PDFLib.PDFDocument.create();
+        const url = 'v3.2.pdf'; //'test.pdf'
+        const existingPdfBytes = await fetch(url).then(res => res.arrayBuffer());
+
+        const pdfDoc = await PDFLib.PDFDocument.load(existingPdfBytes);
+        pdfDoc.registerFontkit(window.fontkit);
+        const helveticaFont = await pdfDoc.embedFont(window.gulshanFontsList[0]);
+        //const helveticaFont = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+
+        const pages = pdfDoc.getPages();
+        const firstPage = pages[0];
+        const { width, height } = firstPage.getSize();
+        //debugger;
+        var scale = 1600 / width;
+        //firstPage.scale(scale,scale);
+
+        // Embed the Helvetica font
+
+
+
+        firstPage.drawText(dataObj.text, {
+            x: dataObj.left * 1.04133 / scale, //width-dataObj.left+(dataObj.width/2),
+            y: height - ((dataObj.top + (dataObj.height)*6/7) / scale),
+            size: dataObj.fontSize / scale,
+            font: helveticaFont,//PDFLib.helveticaFont,
+            color: PDFLib.rgb(0.95, 0.1, 0.1),
+            //rotate: PDFLib.degrees(-45),
+        })
+
+
+
+        const pdfBytes = await pdfDoc.save();
+        //debugger;
+        download(pdfBytes, "PDFEditorTest", 'application/pdf');
+    }
+
+    function overlaySvgFiles(fileInfos) {
+        // var specificPageOverlayFiles = {};
+        // for(var i=0; i<fileInfos.length; i++) {
+        // 	var fi = fileInfos[i];
+        // 	specificPageOverlayFiles[fi.page] = fi.serverFile;
+        // }
+
+        modifyPdf(fileInfos[1]);
+        // var documentFiles = pdf24.getServerFilesForDefaultFileZone();
+        // pdf24.workerServer.doPostJson('overlayPdf', {
+        // 	files : documentFiles,
+        // 	specificPageOverlay : specificPageOverlayFiles,
+        // 	overlayPosition: 'foreground',
+        // 	overlayMode: 'webEditor'
+        // }, function(result) {
+        // 	var monitorUrl = pdf24.workerServer.getJobMonitorUrl({
+        // 		jobId : result.jobId
+        // 	});
+        // 	$('#preparingZone').hide();
+        // 	pdf24.initAndShowWorkerZone(monitorUrl, {
+        // 		updateHistory: true
+        // 	});
+        // }, function(xhr) {
+        // 	alert('Sorry, an error occurred.');
+        // 	$('#preparingZone').hide();
+        // 	$('#form').show();
+        // });
+    }
+
+    function createFinalPdf() {
+
+
+        // get files
+        //var files = pdf24.getServerFilesForDefaultFileZone();
+        // if (files.length == 0) {
+        // return;
+        // }
+
+        pdf24.pdfFileViewer.fabric.savePageState();
+        console.log(pdf24.pdfFileViewer.fabric.pagesState[1]);
+        var fJsonData = JSON.parse(pdf24.pdfFileViewer.fabric.pagesState[1].json);
+        console.log(fJsonData);
+
+        modifyPdf(fJsonData.objects[0]);
+        return;
+
+        pdf24.pdfFileViewer.fabric.createSvgs(function (svgs) {
+
+            overlaySvgFiles(svgs);
+            // pushSvgFiles(svgs, function(fileInfos) {
+            // 	overlaySvgFiles(fileInfos);
+            // });
+        });
+
+        return;
+
+        // $('#workerZone').addHidden();
+        // $('#form').hide();
+        // $('#preparingZone').show();
+        // utilz.scrollIntoView('#preparingZone');
+
+
+
+
+        setTimeout(function () {
+
+            pdf24.pdfFileViewer.fabric.createSvgs(function (svgs) {
+                pushSvgFiles(svgs, function (fileInfos) {
+                    overlaySvgFiles(fileInfos);
+                });
+            });
+        }, 500);
+
+        // pdf24.trackPageEvent('ToolUsage', 'ResultGeneration', '');
+        // pdf24.addLastUsedTool('annotatePdf');
+    }
+
+    function checkLoadTestFile() {
+
+        onFileUploaded();
+    }
+
+    $(function () {
+        setTimeout(function () {
+            onFileUploaded();
+        }, 500);
+    });
+</script>
